@@ -1,29 +1,32 @@
 import pandas as pd
-from catboost import CatBoostRegressor
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import mean_squared_error
+import tkinter as tk
+from tkinter import messagebox
+from darts import TimeSeries
+from darts.models import ExponentialSmoothing
+import matplotlib.pyplot as plt
 
-train_data = pd.read_excel('train.xlsx')
-test_data = pd.read_excel('test.xlsx')
+forecast = pd.read_csv('forecast.csv', index_col=0, parse_dates=True)
 
-print(train_data.isnull().sum())
+def get_purchase_recommendation(input_date):
+    try:
+        input_date = pd.to_datetime(input_date)
 
-X_train = train_data.drop('Цена на арматуру', axis=1)
-y_train = train_data['Цена на арматуру']
-X_test = test_data.drop('Цена на арматуру', axis=1)
+        forecast_index = forecast.time_index
+        nearest_index = forecast_index.get_indexer([input_date], method='nearest')[0]
 
-model = CatBoostRegressor(iterations=1000,
-                          learning_rate=0.1,
-                          depth=6,
-                          loss_function='RMSE',
-                          verbose=100
-                         )
+        recommendation = forecast.values()[nearest_index]
 
-model.fit(X_train, y_train)
+        messagebox.showinfo("Рекомендация", f"Рекомендуемая цена на {input_date.date()}: {recommendation:.2f}")
+    except Exception as e:
+        messagebox.showerror("Ошибка", str(e))
 
-y_pred = model.predict(X_test)
-y_test = test_data['Цена на арматуру']
-mse = mean_squared_error(y_test, y_pred)
-print(f'Mean Squared Error: {mse}')
+root = tk.Tk()
+root.title("Рекомендация по покупке")
 
-model.save_model('catboost_model.cbm')
+tk.Label(root, text="Введите дату (YYYY-MM-DD):").pack(pady=10)
+date_entry = tk.Entry(root)
+date_entry.pack(pady=10)
+
+tk.Button(root, text="Получить рекомендацию", command=lambda: get_purchase_recommendation(date_entry.get())).pack(pady=20)
+
+root.mainloop()
